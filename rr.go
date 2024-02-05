@@ -16,7 +16,7 @@ package emlb
 
 import "sync/atomic"
 
-type RoundRobin struct {
+type roundRobin struct {
 	i   uint64
 	cap uint64
 }
@@ -26,14 +26,14 @@ func NewRoundRobin(cap uint64) (Algorithm, error) {
 		return nil, ErrNoVariant
 	}
 
-	return &RoundRobin{
+	return &roundRobin{
 		i:   0,
 		cap: cap,
 	}, nil
 }
 
 // Next makes a round across items returning every item sequentially if they were not omitted
-func (rr *RoundRobin) Next() (uint64, error) {
+func (rr *roundRobin) Next() (uint64, error) {
 	t := rr.i
 	atomic.AddUint64(&rr.i, 1)
 	return t % rr.cap, nil
