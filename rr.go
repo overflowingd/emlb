@@ -14,11 +14,22 @@
 
 package emlb
 
-import "sync/atomic"
+import (
+	"sync"
+
+	"github.com/overflowingd/emlb/pkg/ll"
+)
+
+type roundRobinNode[V any] struct {
+	*ll.Node[V]
+	retained bool
+}
 
 type roundRobin struct {
-	i   uint64
-	cap uint64
+	sync.Mutex
+
+	current *ll.Node[struct{}]
+	nodes   []*roundRobinNode[struct{}]
 }
 
 func NewRoundRobin(cap uint64) (Algorithm, error) {
@@ -26,15 +37,64 @@ func NewRoundRobin(cap uint64) (Algorithm, error) {
 		return nil, ErrNoVariant
 	}
 
+	var (
+		list    = ll.Make[struct{}](cap)
+		current = list.Head
+		nodes   = make([]*roundRobinNode[struct{}], cap)
+	)
+
+	for i := uint64(0); i < cap; i++ {
+		nodes[i] = &roundRobinNode[struct{}]{
+			Node: current,
+		}
+
+		current = current.Next
+	}
+
 	return &roundRobin{
-		i:   0,
-		cap: cap,
+		current: list.Head,
+		nodes:   nodes,
 	}, nil
 }
 
 // Next makes a round across items returning every item sequentially if they were not omitted
-func (rr *roundRobin) Next() (uint64, error) {
-	t := rr.i
-	atomic.AddUint64(&rr.i, 1)
-	return t % rr.cap, nil
+func (r *roundRobin) Next() (uint64, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	if r.current.Next == nil {
+		return 0, ErrNoVariant
+	}
+
+	current := r.current
+	r.current = r.current.Next
+	return current.I, nil
+}
+
+func (r *roundRobin) Retain(i uint64) (bool, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	current := r.nodes[i]
+	if current.retained {
+		return false, nil
+	}
+
+	current.retained = true
+
+	prev, next := current.Prev, current.Next
+	if prev.I == current.I && next.I == current.I {
+		prev.Next = nil
+		next.Prev = nil
+		return true, nil
+	}
+
+	prev.Next = next
+	next.Prev = prev
+
+	if r.current.I == current.I {
+		r.current = next
+	}
+
+	return true, nil
 }

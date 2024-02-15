@@ -25,4 +25,7 @@ var (
 type Algorithm interface {
 	// Next returns next variant from a balancing set
 	Next() (uint64, error)
+	// Retain excludes item from balancing algorithm until recover call.
+	// Returns if retention of item was ok
+	Retain(uint64) (bool, error)
 }

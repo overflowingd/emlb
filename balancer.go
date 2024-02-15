@@ -18,6 +18,7 @@ import "fmt"
 
 type Balancer[I any] interface {
 	Next() (I, uint64, error)
+	Retain(uint64) (bool, error)
 }
 
 type balancer[I any] struct {
@@ -43,4 +44,14 @@ func (b *balancer[I]) Next() (I, uint64, error) {
 	}
 
 	return b.items[next], next, err
+}
+
+// Retain disables item from balancing algorithm
+func (b *balancer[I]) Retain(i uint64) (bool, error) {
+	ok, err := b.algorithm.Retain(i)
+	if err != nil {
+		return false, fmt.Errorf("algorithm: retain: %w", err)
+	}
+
+	return ok, nil
 }
