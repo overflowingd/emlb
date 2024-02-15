@@ -15,12 +15,16 @@
 package emlb
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-const RRCap = uint64(10)
+const (
+	RRCap           = uint64(10)
+	RRCapConcurrent = uint64(10000)
+)
 
 func TestNew(t *testing.T) {
 	rr, err := NewRoundRobin(RRCap)
@@ -101,4 +105,126 @@ func TestRecoverMid(t *testing.T) {
 
 	ok := rr.Recover(RRCap / 2)
 	require.True(t, ok)
+}
+
+func TestRecoverHead(t *testing.T) {
+	rr, _ := NewRoundRobin(RRCap)
+
+	rr.Retain(0)
+
+	ok := rr.Recover(0)
+	require.True(t, ok)
+
+	i, err := rr.Next()
+	require.Equal(t, i, uint64(1))
+	require.Nil(t, err)
+}
+
+func TestRecoverWithGaps(t *testing.T) {
+	rr, _ := NewRoundRobin(RRCap)
+
+	rr.Retain(2)
+	rr.Retain(3)
+	rr.Retain(4)
+
+	ok := rr.Recover(3)
+	require.True(t, ok)
+	ok = rr.Recover(4)
+	require.True(t, ok)
+	ok = rr.Recover(2)
+	require.True(t, ok)
+
+	for i := uint64(0); i < RRCap; i++ {
+		j, err := rr.Next()
+		require.Equal(t, i, j)
+		require.Nil(t, err)
+	}
+}
+
+func TestRecoverLeft(t *testing.T) {
+	var (
+		rr, _ = NewRoundRobin(RRCap)
+		items = []uint64{0, 1, 2, 3, 4}
+	)
+
+	for _, i := range items {
+		rr.Retain(i)
+	}
+
+	for _, i := range items {
+		ok := rr.Recover(i)
+		require.True(t, ok)
+	}
+}
+
+func TestRecoverRight(t *testing.T) {
+	var (
+		rr, _ = NewRoundRobin(RRCap)
+		items = []uint64{9, 8, 7, 6, 5}
+	)
+
+	for _, i := range items {
+		rr.Retain(i)
+	}
+
+	for _, i := range items {
+		ok := rr.Recover(i)
+		require.True(t, ok)
+	}
+}
+
+func TestReetainRecoverConcurrent(t *testing.T) {
+	var (
+		rr, _ = NewRoundRobin(RRCapConcurrent)
+		wg    sync.WaitGroup
+	)
+
+	wg.Add(int(RRCapConcurrent))
+	for i := uint64(0); i < RRCapConcurrent; i++ {
+		go func(i uint64) {
+			defer wg.Done()
+
+			ok, err := rr.Retain(i)
+			require.Nil(t, err)
+			require.True(t, ok)
+		}(i)
+	}
+
+	wg.Wait()
+
+	i, err := rr.Next()
+	require.ErrorIs(t, err, ErrNoVariant)
+	require.Equal(t, i, uint64(0))
+
+	wg.Add(int(RRCapConcurrent))
+	for i := uint64(0); i < RRCapConcurrent; i++ {
+		go func(i uint64) {
+			defer wg.Done()
+
+			ok := rr.Recover(i)
+			require.True(t, ok)
+		}(i)
+	}
+
+	wg.Wait()
+
+	i, err = rr.Next()
+	require.Nil(t, err)
+	require.Less(t, i, RRCapConcurrent)
+
+	i++
+	e := i
+
+	for ; i < RRCapConcurrent; i++ {
+		j, err := rr.Next()
+		require.Nil(t, err)
+		require.Equal(t, j, i)
+	}
+
+	i = 0
+	for ; i < e; i++ {
+		j, err := rr.Next()
+		require.Nil(t, err)
+		require.Equal(t, j, i)
+	}
 }

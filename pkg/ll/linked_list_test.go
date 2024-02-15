@@ -22,7 +22,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	items := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	items := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	list := ll.New(items)
 
 	require.NotNil(t, list.Head)
@@ -35,13 +35,13 @@ func TestNew(t *testing.T) {
 	current := list.Head
 	for i := 0; i < len(items); i++ {
 		require.Equal(t, current.Value, items[i])
-		require.Equal(t, current.I, i)
+		require.Equal(t, current.I, uint64(i))
 		current = current.Next
 	}
 }
 
 func TestNewEmpty(t *testing.T) {
-	items := []int{}
+	items := []uint64{}
 	list := ll.New(items)
 
 	require.Nil(t, list.Head)
@@ -49,21 +49,21 @@ func TestNewEmpty(t *testing.T) {
 }
 
 func TestNewLen1(t *testing.T) {
-	items := []int{1}
+	items := []uint64{1}
 	list := ll.New(items)
 
 	require.NotNil(t, list.Head)
 	require.NotNil(t, list.Tail)
 
-	require.Equal(t, list.Head.I, 0)
-	require.Equal(t, list.Head.Value, 1)
+	require.Equal(t, list.Head.I, uint64(0))
+	require.Equal(t, list.Head.Value, uint64(1))
 	require.Equal(t, *list.Head, *list.Tail)
 }
 
 const MakeCapacity = 10
 
 func TestMake(t *testing.T) {
-	list := ll.Make[int](MakeCapacity)
+	list := ll.Make[uint64](MakeCapacity)
 
 	require.NotNil(t, list.Head)
 	require.NotNil(t, list.Tail)
@@ -74,26 +74,26 @@ func TestMake(t *testing.T) {
 
 	current := list.Head
 	for i := 0; i < MakeCapacity; i++ {
-		require.Equal(t, current.Value, 0)
-		require.Equal(t, current.I, i)
+		require.Equal(t, current.Value, uint64(0))
+		require.Equal(t, current.I, uint64(i))
 		current = current.Next
 	}
 }
 
 func TestMakeEmpty(t *testing.T) {
-	list := ll.Make[int](0)
+	list := ll.Make[uint64](0)
 
 	require.Nil(t, list.Head)
 	require.Nil(t, list.Tail)
 }
 
 func TestMakeCap1(t *testing.T) {
-	list := ll.Make[int](1)
+	list := ll.Make[uint64](1)
 
 	require.NotNil(t, list.Head)
 	require.NotNil(t, list.Tail)
 
-	require.Equal(t, list.Head.I, 0)
-	require.Equal(t, list.Head.Value, 0)
+	require.Equal(t, list.Head.I, uint64(0))
+	require.Equal(t, list.Head.Value, uint64(0))
 	require.Equal(t, *list.Head, *list.Tail)
 }
