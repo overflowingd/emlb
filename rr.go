@@ -59,7 +59,6 @@ func NewRoundRobin(cap uint64) (Algorithm, error) {
 	}, nil
 }
 
-// Next makes a round across items returning every item sequentially if they were not omitted
 func (r *roundRobin) Next() (uint64, error) {
 	r.Lock()
 	defer r.Unlock()

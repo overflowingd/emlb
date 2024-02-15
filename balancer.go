@@ -17,8 +17,14 @@ package emlb
 import "fmt"
 
 type Balancer[I any] interface {
+	// Next returns next variant from a balancing set using an underlying algorithm
 	Next() (I, uint64, error)
+	// Retain excludes item from balancing algorithm until recover call.
+	// Returns true if item retentained ok
 	Retain(uint64) (bool, error)
+	// Recover item after retention.
+	// Returns true if item recovered ok.
+	Recover(uint64) bool
 }
 
 type balancer[I any] struct {
@@ -36,7 +42,6 @@ func New[I any](
 	}, nil
 }
 
-// Next returns a next item according to a load balancing algorithm
 func (b *balancer[I]) Next() (I, uint64, error) {
 	next, err := b.algorithm.Next()
 	if err != nil {
@@ -46,7 +51,6 @@ func (b *balancer[I]) Next() (I, uint64, error) {
 	return b.items[next], next, err
 }
 
-// Retain disables item from balancing algorithm
 func (b *balancer[I]) Retain(i uint64) (bool, error) {
 	ok, err := b.algorithm.Retain(i)
 	if err != nil {
@@ -54,4 +58,8 @@ func (b *balancer[I]) Retain(i uint64) (bool, error) {
 	}
 
 	return ok, nil
+}
+
+func (b *balancer[I]) Recover(i uint64) bool {
+	return b.algorithm.Recover(i)
 }

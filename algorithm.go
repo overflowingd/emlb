@@ -30,5 +30,5 @@ type Algorithm interface {
 	Retain(uint64) (bool, error)
 	// Recover item after retention.
 	// Returns true if item recovered ok.
-	Recover(i uint64) bool
+	Recover(uint64) bool
 }
