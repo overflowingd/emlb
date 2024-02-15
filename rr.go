@@ -28,6 +28,7 @@ type roundRobinNode[V any] struct {
 type roundRobin struct {
 	sync.Mutex
 
+	cap     uint64
 	current *ll.Node[struct{}]
 	nodes   []*roundRobinNode[struct{}]
 }
@@ -54,6 +55,7 @@ func NewRoundRobin(cap uint64) (Algorithm, error) {
 	return &roundRobin{
 		current: list.Head,
 		nodes:   nodes,
+		cap:     cap,
 	}, nil
 }
 
@@ -97,4 +99,63 @@ func (r *roundRobin) Retain(i uint64) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (r *roundRobin) Recover(i uint64) bool {
+	r.Lock()
+	defer r.Unlock()
+
+	if !r.nodes[i].retained {
+		return false
+	}
+
+	r.nodes[i].retained = false
+
+	var (
+		current = r.nodes[i].Node
+		left    *ll.Node[struct{}]
+		right   *ll.Node[struct{}]
+	)
+
+	// Search for the nearest left node
+	for p := i - 1; p < i; p-- {
+		if r.nodes[p].retained {
+			continue
+		}
+
+		left = r.nodes[p].Node
+		break
+	}
+
+	// When nearest left found, we can stand between it and it's next
+	if left != nil {
+		current.Prev = left
+		current.Next = left.Next
+		current.Prev.Next = current
+		current.Next.Prev = current
+		return true
+	}
+
+	// Else try to find nearest right node
+	for p := i + 1; p < r.cap; p++ {
+		if r.nodes[p].retained {
+			continue
+		}
+
+		right = r.nodes[p].Node
+		break
+	}
+
+	if right != nil {
+		current.Next = right
+		current.Prev = right.Prev
+		current.Next.Prev = current
+		current.Prev.Next = current
+		return true
+	}
+
+	// That means, we have only 1 element
+	current.Next = current
+	current.Prev = current
+	return true
 }

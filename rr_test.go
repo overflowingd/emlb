@@ -93,3 +93,12 @@ func TestRetainAllRight(t *testing.T) {
 	require.Equal(t, i, uint64(0))
 	require.ErrorIs(t, err, ErrNoVariant)
 }
+
+func TestRecoverMid(t *testing.T) {
+	rr, _ := NewRoundRobin(RRCap)
+
+	rr.Retain(RRCap / 2)
+
+	ok := rr.Recover(RRCap / 2)
+	require.True(t, ok)
+}
