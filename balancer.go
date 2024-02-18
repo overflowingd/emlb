@@ -17,6 +17,8 @@ package emlb
 import "fmt"
 
 type Balancer[I any] interface {
+	// Len returns the number of elements in balancer set
+	Len() uint64
 	// Next returns next variant from a balancing set using an underlying algorithm
 	Next() (I, uint64, error)
 	// Retain excludes item from balancing algorithm until recover call.
@@ -30,6 +32,7 @@ type Balancer[I any] interface {
 type balancer[I any] struct {
 	algorithm Algorithm
 	items     []I
+	len       uint64
 }
 
 func New[I any](
@@ -39,7 +42,12 @@ func New[I any](
 	return &balancer[I]{
 		algorithm: algorithm,
 		items:     items,
+		len:       uint64(len(items)),
 	}, nil
+}
+
+func (b *balancer[I]) Len() uint64 {
+	return b.len
 }
 
 func (b *balancer[I]) Next() (I, uint64, error) {
